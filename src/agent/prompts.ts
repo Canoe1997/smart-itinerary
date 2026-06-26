@@ -174,8 +174,3 @@ export const DOC_SYSTEM = `你是一位旅行文档格式化专家。
 > - 想增加或减少某天的活动
 > - 对餐厅或住宿有特别要求
 > - 想了解某个景点的更多细节`
-
-/**
- * @deprecated 使用 ORCHESTRATOR_SYSTEM 代替
- */
-export const TRAVEL_PLANNER_SYSTEM = ORCHESTRATOR_SYSTEM

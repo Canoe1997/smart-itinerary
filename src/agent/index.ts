@@ -9,7 +9,6 @@
 import type OpenAI from 'openai'
 import { createMiMoClient } from '../mimo-client.js'
 import type { ToolRegistry } from '../tools/registry.js'
-import { TRAVEL_PLANNER_SYSTEM } from './prompts.js'
 
 /** 默认最大迭代次数 */
 const DEFAULT_MAX_ITERATIONS = 15
@@ -124,15 +123,4 @@ export function createAgent(options: AgentOptions): Agent {
   }
 
   return { sendMessage, getHistory, resetHistory }
-}
-
-/**
- * @deprecated 使用 createAgent({ systemPrompt, registry }) 替代
- * 保留兼容性，内部委托给 createAgent
- */
-export function createItineraryAgent(registry?: ToolRegistry) {
-  return createAgent({
-    systemPrompt: TRAVEL_PLANNER_SYSTEM,
-    registry,
-  })
 }
