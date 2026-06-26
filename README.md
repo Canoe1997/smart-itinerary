@@ -1,18 +1,19 @@
-# 🚀 Playground Lab
+# 🗺️ Smart Itinerary
 
-前端/全栈技术的学习与实验项目。
+旅行行程智能规划智能体 — AI-powered travel itinerary planner
 
-## 用途
+## 功能
 
-- 探索新的前端/全栈框架
-- 实验新技术和最佳实践
-- 记录学习笔记与心得
+- 🤖 智能体驱动的旅行行程生成
+- 📍 根据目的地、时间、偏好自动规划路线
+- 🎯 推荐景点、餐厅、住宿与交通方案
+- 🔄 支持行程调整与多方案对比
 
 ## 快速开始
 
 ```bash
-git clone https://github.com/Canoe1997/playground-lab.git
-cd playground-lab
+git clone https://github.com/Canoe1997/smart-itinerary.git
+cd smart-itinerary
 ```
 
 ## License
