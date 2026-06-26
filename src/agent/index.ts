@@ -24,13 +24,20 @@ export interface AgentOptions {
   maxIterations?: number
 }
 
+/** Agent 实例接口 */
+export interface Agent {
+  sendMessage: (userInput: string, onToolCall?: (toolName: string, args: Record<string, unknown>) => void) => Promise<string>
+  getHistory: () => ReadonlyArray<OpenAI.ChatCompletionMessageParam>
+  resetHistory: () => void
+}
+
 /**
  * 创建通用 Agent (原生 FC ReAct 版本)
  *
  * 每个 Agent 有独立的对话历史，互不干扰。
  * 子 Agent 用完即弃（上下文隔离），编排器持续运行。
  */
-export function createAgent(options: AgentOptions) {
+export function createAgent(options: AgentOptions): Agent {
   const { systemPrompt, registry, maxIterations = DEFAULT_MAX_ITERATIONS } = options
   const { chatWithTools } = createMiMoClient()
 
