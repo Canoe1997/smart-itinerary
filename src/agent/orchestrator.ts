@@ -47,8 +47,14 @@ function createResearchAgentTool(xhs: XHSClient): Tool {
       required: ['query', 'destination'],
     },
     async execute(args) {
-      const query = args.query as string
-      const destination = args.destination as string
+      if (typeof args.query !== 'string' || !args.query.trim()) {
+        return '错误：缺少 query 参数'
+      }
+      if (typeof args.destination !== 'string' || !args.destination.trim()) {
+        return '错误：缺少 destination 参数'
+      }
+      const query = args.query
+      const destination = args.destination
 
       const researchRegistry = createToolRegistry()
       registerXHSTools(researchRegistry, xhs)
@@ -61,12 +67,17 @@ function createResearchAgentTool(xhs: XHSClient): Tool {
 
       console.log(`   🔍 [攻略研究员] 启动搜索: "${destination} ${query}"`)
 
-      const result = await researcher.sendMessage(
-        `请搜索并深度分析关于"${destination} ${query}"的旅行攻略。返回结构化研究摘要。`,
-      )
-
-      console.log(`   ✅ [攻略研究员] 完成，返回研究摘要`)
-      return result
+      try {
+        const result = await researcher.sendMessage(
+          `请搜索并深度分析关于"${destination} ${query}"的旅行攻略。返回结构化研究摘要。`,
+        )
+        console.log(`   ✅ [攻略研究员] 完成，返回研究摘要`)
+        return result
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : '未知错误'
+        console.error(`   ❌ [攻略研究员] 失败: ${msg}`)
+        return `攻略研究员执行失败：${msg}`
+      }
     },
   }
 }
@@ -95,9 +106,12 @@ function createAdvisorAgentTool(memory: Memory | null): Tool {
       required: ['destination'],
     },
     async execute(args) {
-      const destination = args.destination as string
-      const preferences = (args.preferences as string) ?? ''
-      const researchContext = (args.researchContext as string) ?? ''
+      if (typeof args.destination !== 'string' || !args.destination.trim()) {
+        return '错误：缺少 destination 参数'
+      }
+      const destination = args.destination
+      const preferences = typeof args.preferences === 'string' ? args.preferences : ''
+      const researchContext = typeof args.researchContext === 'string' ? args.researchContext : ''
 
       const advisorRegistry = createToolRegistry()
       registerAmapTools(advisorRegistry)
@@ -122,10 +136,15 @@ function createAdvisorAgentTool(memory: Memory | null): Tool {
         .filter(Boolean)
         .join('\n')
 
-      const result = await advisor.sendMessage(task)
-
-      console.log(`   ✅ [美食住宿顾问] 完成，返回推荐列表`)
-      return result
+      try {
+        const result = await advisor.sendMessage(task)
+        console.log(`   ✅ [美食住宿顾问] 完成，返回推荐列表`)
+        return result
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : '未知错误'
+        console.error(`   ❌ [美食住宿顾问] 失败: ${msg}`)
+        return `美食住宿顾问执行失败：${msg}`
+      }
     },
   }
 }
@@ -154,9 +173,15 @@ function createDocAgentTool(): Tool {
       required: ['itineraryData', 'destination'],
     },
     async execute(args) {
-      const itineraryData = args.itineraryData as string
-      const destination = args.destination as string
-      const days = (args.days as string) ?? '未指定'
+      if (typeof args.itineraryData !== 'string' || !args.itineraryData.trim()) {
+        return '错误：缺少 itineraryData 参数'
+      }
+      if (typeof args.destination !== 'string' || !args.destination.trim()) {
+        return '错误：缺少 destination 参数'
+      }
+      const itineraryData = args.itineraryData
+      const destination = args.destination
+      const days = typeof args.days === 'string' ? args.days : '未指定'
 
       const docAgent = createAgent({
         systemPrompt: DOC_SYSTEM,
@@ -165,12 +190,17 @@ function createDocAgentTool(): Tool {
 
       console.log(`   📝 [文档专家] 格式化行程: ${destination} ${days}天`)
 
-      const result = await docAgent.sendMessage(
-        `请将以下行程数据格式化为精美的 Markdown 文档。\n\n目的地: ${destination}\n天数: ${days}\n\n行程数据:\n${itineraryData}`,
-      )
-
-      console.log(`   ✅ [文档专家] 完成`)
-      return result
+      try {
+        const result = await docAgent.sendMessage(
+          `请将以下行程数据格式化为精美的 Markdown 文档。\n\n目的地: ${destination}\n天数: ${days}\n\n行程数据:\n${itineraryData}`,
+        )
+        console.log(`   ✅ [文档专家] 完成`)
+        return result
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : '未知错误'
+        console.error(`   ❌ [文档专家] 失败: ${msg}`)
+        return `文档格式化执行失败：${msg}`
+      }
     },
   }
 }
