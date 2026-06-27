@@ -8,6 +8,7 @@
  */
 import type OpenAI from 'openai'
 import { createMiMoClient } from '../mimo-client.js'
+import type { TraceCollector } from '../trace/types.js'
 import type { ToolRegistry } from '../tools/registry.js'
 
 /** 默认最大迭代次数 */
@@ -21,6 +22,10 @@ export interface AgentOptions {
   registry?: ToolRegistry
   /** 最大迭代次数（默认 15） */
   maxIterations?: number
+  /** Agent 名称（追踪日志标识） */
+  name?: string
+  /** 追踪收集器（可选，不传则零开销） */
+  trace?: TraceCollector
 }
 
 /** Agent 实例接口 */
@@ -52,7 +57,14 @@ export function createAgent(options: AgentOptions): Agent {
   ): Promise<string> {
     history.push({ role: 'user', content: userInput })
 
+    options.trace?.record({
+      type: 'user_message',
+      timestamp: Date.now(),
+      data: { content: userInput },
+    })
+
     for (let iteration = 0; iteration < maxIterations; iteration++) {
+      const llmStart = Date.now()
       const response = await chatWithTools({
         system: systemPrompt,
         messages: history,
@@ -64,9 +76,27 @@ export function createAgent(options: AgentOptions): Agent {
 
       const message = choice.message
 
+      options.trace?.record({
+        type: 'llm_call',
+        timestamp: Date.now(),
+        durationMs: Date.now() - llmStart,
+        data: {
+          iteration: iteration + 1,
+          hasToolCalls: !!(message.tool_calls && message.tool_calls.length > 0),
+          content: message.tool_calls ? undefined : (message.content ?? ''),
+        },
+      })
+
       // 无工具调用 = 最终回答
       if (!message.tool_calls || message.tool_calls.length === 0) {
         history.push({ role: 'assistant', content: message.content ?? '' })
+
+        options.trace?.record({
+          type: 'final_response',
+          timestamp: Date.now(),
+          data: { content: message.content ?? '', totalIterations: iteration + 1 },
+        })
+
         return message.content ?? '抱歉，我暂时无法生成回复。'
       }
 
@@ -88,6 +118,12 @@ export function createAgent(options: AgentOptions): Agent {
         console.log(`   ⚙️  [ReAct 第${iteration + 1}轮] 调用工具: ${toolName}`)
         onToolCall?.(toolName, toolArgs)
 
+        options.trace?.record({
+          type: 'tool_call',
+          timestamp: Date.now(),
+          data: { name: toolName, args: toolArgs, iteration: iteration + 1 },
+        })
+
         const tool = registry?.getTool(toolName)
         let result: string
 
@@ -101,6 +137,16 @@ export function createAgent(options: AgentOptions): Agent {
           }
         }
 
+        options.trace?.record({
+          type: 'tool_result',
+          timestamp: Date.now(),
+          data: {
+            name: toolName,
+            result,
+            error: result.startsWith('错误') || result.startsWith('工具执行失败') ? result : undefined,
+          },
+        })
+
         history.push({
           role: 'tool',
           tool_call_id: toolCall.id,
@@ -108,6 +154,12 @@ export function createAgent(options: AgentOptions): Agent {
         })
       }
     }
+
+    options.trace?.record({
+      type: 'final_response',
+      timestamp: Date.now(),
+      data: { content: '推理步骤过多，请简化问题后重试。', totalIterations: maxIterations },
+    })
 
     return '推理步骤过多，请简化问题后重试。'
   }
