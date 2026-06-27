@@ -9,6 +9,7 @@ import { loadConfig } from './config.js'
 import { createXHSClient } from './mcp/xiaohongshu.js'
 import { createMemory } from './memory/index.js'
 import { createOrchestrator } from './agent/orchestrator.js'
+import { createTraceCollector } from './trace/collector.js'
 
 async function main() {
   console.log('🗺️  Smart Itinerary — AI 旅行规划师 (多 Agent 协作)')
@@ -35,8 +36,11 @@ async function main() {
     console.warn('⚠️  记忆系统未启用:', (error as Error).message)
   }
 
-  // 3. 创建编排器（内部注册 3 个 Agent 工具）
-  const orchestrator = createOrchestrator({ xhs, memory })
+  // 3. 创建追踪收集器
+  const trace = createTraceCollector('orchestrator')
+
+  // 4. 创建编排器（内部注册 3 个 Agent 工具）
+  const orchestrator = createOrchestrator({ xhs, memory, trace })
 
   console.log('\n输入你的旅行需求，我来帮你规划行程！')
   console.log('输入 /quit 退出，/new 开始新旅程\n')
@@ -84,6 +88,13 @@ async function main() {
   } finally {
     rl.close()
     xhs.stop()
+    // 保存追踪日志
+    try {
+      const filePath = await trace.saveToFile('traces')
+      console.log(`📊 追踪日志已保存: ${filePath}`)
+    } catch (error) {
+      console.warn('⚠️  追踪日志保存失败:', (error as Error).message)
+    }
   }
 }
 
