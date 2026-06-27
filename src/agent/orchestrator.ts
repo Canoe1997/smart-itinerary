@@ -14,6 +14,7 @@ import { createToolRegistry } from '../tools/registry.js'
 import type { Tool } from '../tools/registry.js'
 import type { createXHSClient } from '../mcp/xiaohongshu.js'
 import type { createMemory } from '../memory/index.js'
+import type { TraceCollector } from '../trace/types.js'
 import { registerXHSTools } from '../tools/xhs.js'
 import { registerMemoryTools } from '../tools/memory.js'
 import { registerAmapTools } from '../tools/amap.js'
@@ -27,7 +28,7 @@ import {
 type XHSClient = ReturnType<typeof createXHSClient>
 type Memory = ReturnType<typeof createMemory>
 
-function createResearchAgentTool(xhs: XHSClient): Tool {
+function createResearchAgentTool(xhs: XHSClient, trace?: TraceCollector): Tool {
   return {
     name: 'research_agent',
     description:
@@ -59,10 +60,13 @@ function createResearchAgentTool(xhs: XHSClient): Tool {
       const researchRegistry = createToolRegistry()
       registerXHSTools(researchRegistry, xhs)
 
+      const subTrace = trace?.createSubCollector('researcher')
       const researcher = createAgent({
         systemPrompt: RESEARCHER_SYSTEM,
         registry: researchRegistry,
         maxIterations: 6,
+        name: 'researcher',
+        trace: subTrace,
       })
 
       console.log(`   🔍 [攻略研究员] 启动搜索: "${destination} ${query}"`)
@@ -82,7 +86,7 @@ function createResearchAgentTool(xhs: XHSClient): Tool {
   }
 }
 
-function createAdvisorAgentTool(memory: Memory | null): Tool {
+function createAdvisorAgentTool(memory: Memory | null, trace?: TraceCollector): Tool {
   return {
     name: 'advisor_agent',
     description:
@@ -119,10 +123,13 @@ function createAdvisorAgentTool(memory: Memory | null): Tool {
         registerMemoryTools(advisorRegistry, memory)
       }
 
+      const subTrace = trace?.createSubCollector('advisor')
       const advisor = createAgent({
         systemPrompt: ADVISOR_SYSTEM,
         registry: advisorRegistry,
         maxIterations: 8,
+        name: 'advisor',
+        trace: subTrace,
       })
 
       console.log(`   🍜 [美食住宿顾问] 启动分析: ${destination}`)
@@ -149,7 +156,7 @@ function createAdvisorAgentTool(memory: Memory | null): Tool {
   }
 }
 
-function createDocAgentTool(): Tool {
+function createDocAgentTool(trace?: TraceCollector): Tool {
   return {
     name: 'doc_agent',
     description:
@@ -183,9 +190,12 @@ function createDocAgentTool(): Tool {
       const destination = args.destination
       const days = typeof args.days === 'string' ? args.days : '未指定'
 
+      const subTrace = trace?.createSubCollector('doc')
       const docAgent = createAgent({
         systemPrompt: DOC_SYSTEM,
         maxIterations: 1,
+        name: 'doc',
+        trace: subTrace,
       })
 
       console.log(`   📝 [文档专家] 格式化行程: ${destination} ${days}天`)
@@ -208,13 +218,14 @@ function createDocAgentTool(): Tool {
 export function createOrchestrator(options: {
   xhs: XHSClient
   memory: Memory | null
+  trace?: TraceCollector
 }): Agent {
-  const { xhs, memory } = options
+  const { xhs, memory, trace } = options
 
   const orchestratorRegistry = createToolRegistry()
-  orchestratorRegistry.register(createResearchAgentTool(xhs))
-  orchestratorRegistry.register(createAdvisorAgentTool(memory))
-  orchestratorRegistry.register(createDocAgentTool())
+  orchestratorRegistry.register(createResearchAgentTool(xhs, trace))
+  orchestratorRegistry.register(createAdvisorAgentTool(memory, trace))
+  orchestratorRegistry.register(createDocAgentTool(trace))
 
   console.log(`🤖 编排器就绪 (${orchestratorRegistry.size()} 个 Agent 工具)`)
 
@@ -222,5 +233,7 @@ export function createOrchestrator(options: {
     systemPrompt: ORCHESTRATOR_SYSTEM,
     registry: orchestratorRegistry,
     maxIterations: 10,
+    name: 'orchestrator',
+    trace,
   })
 }
