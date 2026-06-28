@@ -65,12 +65,12 @@ async function main() {
       console.log('\n🤔 小旅正在规划中...\n')
 
       try {
-        const reply = await orchestrator.sendMessage(userInput, (toolName) => {
-          if (toolName === 'research_agent') {
+        const reply = await orchestrator.sendMessage(userInput, (event) => {
+          if (event.status === 'start' && event.tool === 'research_agent') {
             console.log('   🔍 调用攻略研究员...\n')
-          } else if (toolName === 'advisor_agent') {
+          } else if (event.status === 'start' && event.tool === 'advisor_agent') {
             console.log('   🍜 调用美食住宿顾问...\n')
-          } else if (toolName === 'doc_agent') {
+          } else if (event.status === 'start' && event.tool === 'doc_agent') {
             console.log('   📝 调用文档专家...\n')
           }
         })

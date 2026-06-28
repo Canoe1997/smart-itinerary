@@ -69,15 +69,16 @@ export async function handleChatRequest(
       try {
         const collectedToolCalls: ToolCallEvent[] = []
 
-        const response = await orchestrator.sendMessage(fullMessage, (toolName) => {
-          const event: ToolCallEvent = {
+        const response = await orchestrator.sendMessage(fullMessage, (event) => {
+          const eventSse: ToolCallEvent = {
             type: 'tool-call',
-            agent: guessAgentName(toolName),
-            tool: toolName,
-            status: 'running',
+            agent: guessAgentName(event.tool),
+            tool: event.tool,
+            status: event.status === 'start' ? 'running' : 'done',
+            durationMs: event.durationMs,
           }
-          collectedToolCalls.push(event)
-          controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+          collectedToolCalls.push(eventSse)
+          controller.enqueue(`data: ${JSON.stringify(eventSse)}\n\n`)
         })
 
         const chunkSize = 20

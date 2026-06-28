@@ -14,6 +14,13 @@ import type { ToolRegistry } from '../tools/registry.js'
 /** 默认最大迭代次数 */
 const DEFAULT_MAX_ITERATIONS = 15
 
+/** 工具调用事件 */
+export interface ToolEvent {
+  tool: string
+  status: 'start' | 'end'
+  durationMs?: number
+}
+
 /** Agent 创建选项 */
 export interface AgentOptions {
   /** System Prompt（角色定义） */
@@ -30,7 +37,7 @@ export interface AgentOptions {
 
 /** Agent 实例接口 */
 export interface Agent {
-  sendMessage: (userInput: string, onToolCall?: (toolName: string, args: Record<string, unknown>) => void) => Promise<string>
+  sendMessage: (userInput: string, onToolEvent?: (event: ToolEvent) => void) => Promise<string>
   getHistory: () => ReadonlyArray<OpenAI.ChatCompletionMessageParam>
   resetHistory: () => void
 }
@@ -53,7 +60,7 @@ export function createAgent(options: AgentOptions): Agent {
    */
   async function sendMessage(
     userInput: string,
-    onToolCall?: (toolName: string, args: Record<string, unknown>) => void,
+    onToolEvent?: (event: ToolEvent) => void,
   ): Promise<string> {
     history.push({ role: 'user', content: userInput })
 
@@ -116,7 +123,7 @@ export function createAgent(options: AgentOptions): Agent {
         }
 
         console.log(`   ⚙️  [ReAct 第${iteration + 1}轮] 调用工具: ${toolName}`)
-        onToolCall?.(toolName, toolArgs)
+        onToolEvent?.({ tool: toolName, status: 'start' })
 
         options.trace?.record({
           type: 'tool_call',
@@ -126,6 +133,7 @@ export function createAgent(options: AgentOptions): Agent {
 
         const tool = registry?.getTool(toolName)
         let result: string
+        const toolStart = Date.now()
 
         if (!tool) {
           result = `错误：工具 "${toolName}" 不存在`
@@ -136,6 +144,8 @@ export function createAgent(options: AgentOptions): Agent {
             result = `工具执行失败: ${(error as Error).message}`
           }
         }
+
+        onToolEvent?.({ tool: toolName, status: 'end', durationMs: Date.now() - toolStart })
 
         options.trace?.record({
           type: 'tool_result',
