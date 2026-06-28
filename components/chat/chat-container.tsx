@@ -100,7 +100,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
                   setCurrentToolCalls([...toolCalls])
                 }
               } catch {
-                assistantContent += line
+                // Malformed JSON from tool-call event — skip rather than leak into chat
               }
             } else if (line.trim()) {
               assistantContent += line
@@ -194,7 +194,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
 
           {isLoading && currentToolCalls.length === 0 && (
             <div className="flex justify-start mb-5">
-              <div className="rounded-2xl rounded-bl-md px-4 py-3">
+              <div className="rounded-2xl rounded-bl-md px-4 py-3" role="status" aria-label="正在输入">
                 <span className="inline-flex gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />

@@ -49,6 +49,7 @@ export function InputBar({ onSend, isLoading }: InputBarProps) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder="告诉小旅你的旅行需求..."
+            aria-label="输入消息"
             disabled={isLoading}
             rows={1}
             className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60 disabled:opacity-50 resize-none leading-relaxed"
