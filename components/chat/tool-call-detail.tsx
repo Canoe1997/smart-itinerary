@@ -9,6 +9,9 @@ interface ToolCallDetailProps {
   tool: string
   status: 'running' | 'done'
   durationMs?: number
+  args?: Record<string, unknown>
+  result?: string
+  children?: React.ReactNode
 }
 
 const AGENT_CONFIG = {
@@ -18,7 +21,7 @@ const AGENT_CONFIG = {
   orchestrator: { icon: Bot, label: '编排器', color: 'border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900/50', iconColor: 'text-slate-500' },
 }
 
-export function ToolCallDetail({ agent, tool, status, durationMs }: ToolCallDetailProps) {
+export function ToolCallDetail({ agent, tool, status, durationMs, args, result, children }: ToolCallDetailProps) {
   const [isOpen, setIsOpen] = useState(false)
   const config = AGENT_CONFIG[agent as keyof typeof AGENT_CONFIG] ?? AGENT_CONFIG.orchestrator
   const Icon = config.icon
@@ -54,10 +57,37 @@ export function ToolCallDetail({ agent, tool, status, durationMs }: ToolCallDeta
         )}
       </button>
       {isOpen && (
-        <div className="border-t border-border/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
-          <p>工具: <code className="bg-foreground/5 px-1.5 py-0.5 rounded-md text-xs">{tool}</code></p>
-          {durationMs && <p>耗时: <span className="tabular-nums">{durationMs}ms</span></p>}
-          <p>状态: {status === 'running' ? '执行中...' : '已完成'}</p>
+        <div className="border-t border-border/40 px-3 py-2 text-xs text-muted-foreground space-y-2">
+          {args && Object.keys(args).length > 0 && (
+            <div>
+              <p className="font-medium text-foreground/70 mb-1">参数</p>
+              {Object.entries(args).map(([key, value]) => (
+                <p key={key} className="truncate">
+                  <span className="text-foreground/50">{key}: </span>
+                  <span className="text-foreground/80">{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                </p>
+              ))}
+            </div>
+          )}
+          {result && (
+            <div>
+              <p className="font-medium text-foreground/70 mb-1">结果</p>
+              <p className="text-foreground/60 line-clamp-3">{result}</p>
+            </div>
+          )}
+          {children && (
+            <div>
+              <p className="font-medium text-foreground/70 mb-1">子步骤</p>
+              <div className="space-y-1">{children}</div>
+            </div>
+          )}
+          {!args && !result && !children && (
+            <>
+              <p>工具: <code className="bg-foreground/5 px-1.5 py-0.5 rounded-md text-xs">{tool}</code></p>
+              {durationMs && <p>耗时: <span className="tabular-nums">{durationMs}ms</span></p>}
+              <p>状态: {status === 'running' ? '执行中...' : '已完成'}</p>
+            </>
+          )}
         </div>
       )}
     </div>
