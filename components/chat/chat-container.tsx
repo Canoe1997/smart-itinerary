@@ -5,7 +5,7 @@ import { MapPin, Compass, Sparkles } from 'lucide-react'
 import { MessageBubble } from './message-bubble'
 import { ToolCallDetail } from './tool-call-detail'
 import { InputBar } from './input-bar'
-import { Timeline } from '@/components/itinerary/timeline'
+import { ItineraryCard } from './itinerary-card'
 import { parseItinerary } from '@/lib/itinerary-parser'
 import { useAppStore } from '@/stores/app-store'
 import { useConversationStore } from '@/stores/conversation-store'
@@ -189,10 +189,8 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
             if (msg.role === 'assistant' && parseItinerary(msg.content)) {
               return (
                 <div key={msg.id} className="mb-5">
-                  <Timeline content={msg.content} />
-                  <MessageBubble role={msg.role} content={msg.content}>
-                    {toolCalls}
-                  </MessageBubble>
+                  {toolCalls}
+                  <ItineraryCard content={msg.content} />
                 </div>
               )
             }
