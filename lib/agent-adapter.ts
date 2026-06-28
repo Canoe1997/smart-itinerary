@@ -40,6 +40,9 @@ export interface ToolCallEvent {
   tool: string
   status: 'running' | 'done'
   durationMs?: number
+  args?: Record<string, unknown>
+  result?: string
+  parentTool?: string
 }
 
 /**
@@ -76,13 +79,15 @@ export async function handleChatRequest(
             tool: event.tool,
             status: event.status === 'start' ? 'running' : 'done',
             durationMs: event.durationMs,
+            args: event.args,
+            result: event.result,
+            parentTool: event.parentTool,
           }
 
           if (event.status === 'end') {
-            // Update last matching running entry to done
             for (let i = collectedToolCalls.length - 1; i >= 0; i--) {
               if (collectedToolCalls[i].tool === event.tool && collectedToolCalls[i].status === 'running') {
-                collectedToolCalls[i] = { ...collectedToolCalls[i], status: 'done', durationMs: event.durationMs }
+                collectedToolCalls[i] = { ...collectedToolCalls[i], status: 'done', durationMs: event.durationMs, result: event.result }
                 break
               }
             }
@@ -90,7 +95,6 @@ export async function handleChatRequest(
             collectedToolCalls.push(eventSse)
           }
 
-          // Always send SSE event to frontend
           controller.enqueue(`data: ${JSON.stringify(eventSse)}\n\n`)
         })
 

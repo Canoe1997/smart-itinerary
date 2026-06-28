@@ -19,6 +19,9 @@ export interface ToolEvent {
   tool: string
   status: 'start' | 'end'
   durationMs?: number
+  args?: Record<string, unknown>
+  result?: string
+  parentTool?: string
 }
 
 /** Agent 创建选项 */
@@ -123,7 +126,7 @@ export function createAgent(options: AgentOptions): Agent {
         }
 
         console.log(`   ⚙️  [ReAct 第${iteration + 1}轮] 调用工具: ${toolName}`)
-        onToolEvent?.({ tool: toolName, status: 'start' })
+        onToolEvent?.({ tool: toolName, status: 'start', args: toolArgs })
 
         options.trace?.record({
           type: 'tool_call',
@@ -145,7 +148,12 @@ export function createAgent(options: AgentOptions): Agent {
           }
         }
 
-        onToolEvent?.({ tool: toolName, status: 'end', durationMs: Date.now() - toolStart })
+        onToolEvent?.({
+          tool: toolName,
+          status: 'end',
+          durationMs: Date.now() - toolStart,
+          result: result.length > 500 ? result.slice(0, 500) + '...' : result,
+        })
 
         options.trace?.record({
           type: 'tool_result',
