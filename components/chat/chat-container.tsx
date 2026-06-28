@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { MapPin, Compass, Sparkles } from 'lucide-react'
 import { MessageBubble } from './message-bubble'
 import { ToolCallDetail } from './tool-call-detail'
@@ -8,9 +8,10 @@ import { InputBar } from './input-bar'
 import { Timeline } from '@/components/itinerary/timeline'
 import { parseItinerary } from '@/lib/itinerary-parser'
 import { useAppStore } from '@/stores/app-store'
+import { useConversationStore } from '@/stores/conversation-store'
 import type { ToolCallEvent } from '@/lib/agent-adapter'
 
-interface Message {
+interface LiveMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
@@ -23,24 +24,39 @@ const QUICK_PROMPTS = [
   { icon: Sparkles, text: '帮我制定伊豆温泉行程' },
 ]
 
-export function ChatContainer() {
-  const [messages, setMessages] = useState<Message[]>([])
+interface ChatContainerProps {
+  conversationId: string
+}
+
+export function ChatContainer({ conversationId }: ChatContainerProps) {
+  const [liveMessages, setLiveMessages] = useState<LiveMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentToolCalls, setCurrentToolCalls] = useState<ToolCallEvent[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const preferences = useAppStore((s) => s.getPreferencesSummary())
+  const storedMessages = useConversationStore((s) => s.messages)
+
+  useEffect(() => {
+    const mapped: LiveMessage[] = storedMessages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      toolCalls: (m.tool_calls as ToolCallEvent[]) ?? undefined,
+    }))
+    setLiveMessages(mapped)
+  }, [storedMessages])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoading, currentToolCalls])
+  }, [liveMessages, isLoading, currentToolCalls])
 
   const sendMessage = useCallback(async (content: string) => {
-    const userMsg: Message = {
+    const userMsg: LiveMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
       content,
     }
-    setMessages((prev) => [...prev, userMsg])
+    setLiveMessages((prev) => [...prev, userMsg])
     setIsLoading(true)
     setCurrentToolCalls([])
 
@@ -48,7 +64,7 @@ export function ChatContainer() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content, preferences }),
+        body: JSON.stringify({ message: content, conversationId, preferences }),
       })
 
       if (!response.ok || !response.body) {
@@ -62,7 +78,7 @@ export function ChatContainer() {
       let buffer = ''
 
       const assistantId = `assistant-${Date.now()}`
-      setMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '' }])
+      setLiveMessages((prev) => [...prev, { id: assistantId, role: 'assistant', content: '' }])
 
       while (true) {
         const { done, value } = await reader.read()
@@ -92,7 +108,7 @@ export function ChatContainer() {
           }
         }
 
-        setMessages((prev) =>
+        setLiveMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
               ? { ...m, content: assistantContent, toolCalls: [...toolCalls] }
@@ -101,52 +117,26 @@ export function ChatContainer() {
         )
       }
     } catch (error) {
-      const errorMsg: Message = {
+      const errorMsg: LiveMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
         content: `发送失败: ${(error as Error).message}`,
       }
-      setMessages((prev) => [...prev, errorMsg])
+      setLiveMessages((prev) => [...prev, errorMsg])
     } finally {
       setIsLoading(false)
       setCurrentToolCalls([])
     }
-  }, [preferences])
-
-  const exportPdf = useCallback(async () => {
-    const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant')
-    if (!lastAssistant) return
-
-    try {
-      const response = await fetch('/api/pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itinerary: lastAssistant.content }),
-      })
-
-      if (!response.ok) throw new Error('PDF 导出失败')
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = '旅行行程单.pdf'
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(url), 100)
-    } catch (error) {
-      alert(`PDF 导出失败: ${(error as Error).message}`)
-    }
-  }, [messages])
+  }, [conversationId, preferences])
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-      {/* 消息区域 */}
+    <div className="flex flex-1 flex-col min-h-0">
       <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-live="polite" aria-label="聊天消息">
         <div className="mx-auto max-w-3xl">
-          {messages.length === 0 && (
+          {liveMessages.length === 0 && (
             <div className="flex flex-col items-center justify-center pt-[15vh]">
-              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-                <MapPin className="h-8 w-8 text-primary" />
+              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">
+                <MapPin className="h-7 w-7 text-accent" />
               </div>
               <h2 className="text-2xl font-semibold tracking-tight">你好，我是小旅</h2>
               <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground leading-relaxed">
@@ -159,9 +149,9 @@ export function ChatContainer() {
                   <button
                     key={prompt.text}
                     onClick={() => sendMessage(prompt.text)}
-                    className="group flex items-center gap-2.5 rounded-xl border border-border/60 bg-card px-4 py-2.5 text-sm text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:text-foreground hover:shadow-sm"
+                    className="group flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5 text-sm text-muted-foreground transition-all duration-150 hover:border-accent/30 hover:text-foreground hover:shadow-sm"
                   >
-                    <prompt.icon className="h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-primary" />
+                    <prompt.icon className="h-4 w-4 text-muted-foreground/60 transition-colors group-hover:text-accent" />
                     {prompt.text}
                   </button>
                 ))}
@@ -169,7 +159,7 @@ export function ChatContainer() {
             </div>
           )}
 
-          {messages.map((msg) => {
+          {liveMessages.map((msg) => {
             const toolCalls = msg.toolCalls && msg.toolCalls.length > 0 ? (
               <div className="mb-2.5">
                 {msg.toolCalls.map((tc, i) => (
@@ -204,7 +194,7 @@ export function ChatContainer() {
 
           {isLoading && currentToolCalls.length === 0 && (
             <div className="flex justify-start mb-5">
-              <div className="rounded-2xl rounded-bl-md border border-border/60 bg-card px-4 py-3 shadow-sm">
+              <div className="rounded-2xl rounded-bl-md px-4 py-3">
                 <span className="inline-flex gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
                   <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
@@ -218,13 +208,7 @@ export function ChatContainer() {
         </div>
       </div>
 
-      {/* 输入栏 */}
-      <InputBar
-        onSend={sendMessage}
-        onExportPdf={exportPdf}
-        isLoading={isLoading}
-        hasMessages={messages.some((m) => m.role === 'assistant')}
-      />
+      <InputBar onSend={sendMessage} isLoading={isLoading} />
     </div>
   )
 }
