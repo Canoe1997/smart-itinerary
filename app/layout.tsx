@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { ThemeProvider } from '@/components/layout/theme-provider'
-import { Header } from '@/components/layout/header'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -15,14 +14,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body className="min-h-screen antialiased">
+      <body className="h-dvh overflow-hidden antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <Header />
           {children}
         </ThemeProvider>
       </body>
