@@ -4,6 +4,8 @@ import { getSupabase } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 export default async function Home() {
+  let targetId: string | null = null
+
   try {
     const { data } = await getSupabase()
       .from('conversations')
@@ -13,23 +15,27 @@ export default async function Home() {
       .single()
 
     if (data) {
-      redirect(`/chat/${data.id}`)
-    }
+      targetId = data.id
+    } else {
+      const { data: created } = await getSupabase()
+        .from('conversations')
+        .insert({ title: '新对话' })
+        .select('id')
+        .single()
 
-    const { data: created } = await getSupabase()
-      .from('conversations')
-      .insert({ title: '新对话' })
-      .select('id')
-      .single()
-
-    if (created) {
-      redirect(`/chat/${created.id}`)
+      if (created) {
+        targetId = created.id
+      }
     }
   } catch {
-    // Supabase 未配置或表不存在
+    // Supabase 未配置或表不存在，显示 fallback
   }
 
-  // Fallback: 显示欢迎页
+  // redirect() 必须在 try-catch 外部调用（它通过 throw 实现）
+  if (targetId) {
+    redirect(`/chat/${targetId}`)
+  }
+
   return (
     <div className="flex h-dvh items-center justify-center">
       <div className="text-center">
