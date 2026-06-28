@@ -6,8 +6,19 @@
 import puppeteer from 'puppeteer'
 import { marked } from 'marked'
 
+/** 转义 HTML 特殊字符（防止 XSS） */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 /** 将行程 Markdown 渲染为 HTML（带打印优化样式） */
 function renderItineraryHtml(markdown: string, title: string): string {
+  const safeTitle = escapeHtml(title)
   const htmlContent = marked.parse(markdown) as string
 
   return `<!DOCTYPE html>
@@ -90,7 +101,7 @@ function renderItineraryHtml(markdown: string, title: string): string {
 </head>
 <body>
   <div class="header">
-    <h1>🗺️ ${title}</h1>
+    <h1>🗺️ ${safeTitle}</h1>
     <p class="subtitle">由「小旅」AI 旅行规划师生成 · ${new Date().toLocaleDateString('zh-CN')}</p>
   </div>
   <div class="content">${htmlContent}</div>

@@ -21,6 +21,13 @@ export async function POST(request: Request) {
       })
     }
 
+    if (typeof title !== 'string' || title.length > 200) {
+      return new Response(JSON.stringify({ error: '标题过长（最多200字符）' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     const pdf = await generatePdf(itinerary, title)
 
     return new Response(new Uint8Array(pdf), {
