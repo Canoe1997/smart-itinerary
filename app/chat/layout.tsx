@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { PreviewPanel } from '@/components/layout/preview-panel'
 import { MobileNav } from '@/components/layout/mobile-nav'
+import { useAppStore } from '@/stores/app-store'
+import { useConversationStore } from '@/stores/conversation-store'
 
 export default function ChatLayout({
   children,
@@ -11,6 +14,34 @@ export default function ChatLayout({
   children: React.ReactNode
 }) {
   const [mobileTab, setMobileTab] = useState<'chat' | 'itinerary' | 'settings'>('chat')
+
+  const router = useRouter()
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const togglePreview = useAppStore((s) => s.togglePreview)
+  const createConversation = useConversationStore((s) => s.createConversation)
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      // ⌘+B — 切换侧栏
+      if (e.metaKey && e.key === 'b') {
+        e.preventDefault()
+        toggleSidebar()
+      }
+      // ⌘+. — 切换预览面板
+      if (e.metaKey && e.key === '.') {
+        e.preventDefault()
+        togglePreview()
+      }
+      // ⌘+Shift+N — 新建对话
+      if (e.metaKey && e.shiftKey && e.key === 'N') {
+        e.preventDefault()
+        createConversation().then((id) => router.push(`/chat/${id}`))
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [toggleSidebar, togglePreview, createConversation, router])
 
   return (
     <div className="flex h-dvh flex-col">
