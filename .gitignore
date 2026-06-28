@@ -38,3 +38,10 @@ mcp-servers/
 
 # Trace output
 traces/
+
+# Next.js
+.next/
+out/
+
+# TypeScript build info
+tsconfig.tsbuildinfo
