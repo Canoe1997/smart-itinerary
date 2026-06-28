@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { MapPin, Compass, Sparkles } from 'lucide-react'
+import { MapPin, Compass, Sparkles, Check, Loader2 } from 'lucide-react'
 import { MessageBubble } from './message-bubble'
 import { ToolCallDetail } from './tool-call-detail'
 import { InputBar } from './input-bar'
@@ -23,6 +23,30 @@ const QUICK_PROMPTS = [
   { icon: Compass, text: '推荐大阪美食攻略' },
   { icon: Sparkles, text: '帮我制定伊豆温泉行程' },
 ]
+
+interface ToolCallNode extends ToolCallEvent {
+  children: ToolCallEvent[]
+}
+
+function buildToolCallTree(toolCalls: ToolCallEvent[]): ToolCallNode[] {
+  const roots: ToolCallNode[] = []
+  const parentMap = new Map<string, ToolCallNode>()
+
+  for (const tc of toolCalls) {
+    if (tc.parentTool) {
+      const parent = parentMap.get(tc.parentTool)
+      if (parent) {
+        parent.children.push(tc)
+      }
+    } else {
+      const node: ToolCallNode = { ...tc, children: [] }
+      roots.push(node)
+      parentMap.set(tc.tool, node)
+    }
+  }
+
+  return roots
+}
 
 interface ChatContainerProps {
   conversationId: string
@@ -184,16 +208,33 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           )}
 
           {liveMessages.map((msg) => {
-            const toolCalls = msg.toolCalls && msg.toolCalls.length > 0 ? (
+            const toolCallTree = msg.toolCalls ? buildToolCallTree(msg.toolCalls) : []
+            const toolCalls = toolCallTree.length > 0 ? (
               <div className="mb-2.5">
-                {msg.toolCalls.map((tc, i) => (
+                {toolCallTree.map((node, i) => (
                   <ToolCallDetail
-                    key={`${tc.tool}-${i}`}
-                    agent={tc.agent}
-                    tool={tc.tool}
-                    status={tc.status}
-                    durationMs={tc.durationMs}
-                  />
+                    key={`${node.tool}-${i}`}
+                    agent={node.agent}
+                    tool={node.tool}
+                    status={node.status}
+                    durationMs={node.durationMs}
+                    args={node.args}
+                    result={node.result}
+                  >
+                    {node.children.map((child, j) => (
+                      <div key={`${child.tool}-${j}`} className="flex items-center gap-1.5 text-xs text-muted-foreground/80 py-0.5">
+                        {child.status === 'done' ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        )}
+                        <span>{child.tool}</span>
+                        {child.durationMs && (
+                          <span className="tabular-nums text-muted-foreground/50 ml-auto">{child.durationMs}ms</span>
+                        )}
+                      </div>
+                    ))}
+                  </ToolCallDetail>
                 ))}
               </div>
             ) : null
