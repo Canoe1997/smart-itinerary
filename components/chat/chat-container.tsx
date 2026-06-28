@@ -50,7 +50,8 @@ export function ChatContainer() {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let assistantContent = ''
-      const toolCalls: ToolCallEvent[] = []
+      let toolCalls: ToolCallEvent[] = []
+      let buffer = ''
 
       // 添加空的 assistant 消息（逐步填充）
       const assistantId = `assistant-${Date.now()}`
@@ -60,24 +61,29 @@ export function ChatContainer() {
         const { done, value } = await reader.read()
         if (done) break
 
-        const text = decoder.decode(value, { stream: true })
+        buffer += decoder.decode(value, { stream: true })
 
-        // 解析 SSE 自定义事件
-        const lines = text.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const event = JSON.parse(line.slice(6)) as ToolCallEvent
-              if (event.type === 'tool-call') {
-                toolCalls.push(event)
-                setCurrentToolCalls([...toolCalls])
+        // 按 \n\n 分割 SSE 事件（避免 chunk 边界拆分 JSON）
+        const events = buffer.split('\n\n')
+        buffer = events.pop() ?? ''  // 最后一段可能不完整，留到下次
+
+        for (const event of events) {
+          const lines = event.split('\n')
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const parsed = JSON.parse(line.slice(6)) as ToolCallEvent
+                if (parsed.type === 'tool-call') {
+                  toolCalls = [...toolCalls, parsed]
+                  setCurrentToolCalls([...toolCalls])
+                }
+              } catch {
+                // 非 JSON 行，当作普通文本
+                assistantContent += line
               }
-            } catch {
-              // 非 JSON 行，当作普通文本
+            } else if (line.trim()) {
               assistantContent += line
             }
-          } else {
-            assistantContent += line
           }
         }
 
@@ -122,7 +128,8 @@ export function ChatContainer() {
       a.href = url
       a.download = '旅行行程单.pdf'
       a.click()
-      URL.revokeObjectURL(url)
+      // 延迟释放 URL，确保浏览器有时间开始下载
+      setTimeout(() => URL.revokeObjectURL(url), 100)
     } catch (error) {
       alert(`PDF 导出失败: ${(error as Error).message}`)
     }
@@ -131,7 +138,7 @@ export function ChatContainer() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col">
       {/* 消息区域 */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-live="polite" aria-label="聊天消息">
         <div className="mx-auto max-w-3xl">
           {messages.length === 0 && (
             <div className="flex h-[60vh] flex-col items-center justify-center text-center">
