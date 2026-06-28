@@ -5,7 +5,7 @@
  * 接收用户消息，创建 Orchestrator，返回 SSE 流式响应。
  * 支持 conversationId 将消息持久化到 Supabase。
  */
-import { handleChatRequest, processChatRequest } from '@/lib/agent-adapter'
+import { handleChatRequest, type ToolCallEvent } from '@/lib/agent-adapter'
 import { getSupabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
@@ -25,55 +25,49 @@ export async function POST(request: Request) {
 
     const preferencesSummary = body.preferences as string | undefined
 
-    if (conversationId) {
-      const { response, toolCalls } = await processChatRequest(
-        message.trim(),
-        preferencesSummary,
-      )
+    // 流结束后写入 Supabase（通过 onComplete 回调，只运行一次 Agent）
+    const onComplete = conversationId
+      ? (result: { response: string; toolCalls: ToolCallEvent[] }) => {
+          saveToSupabase(conversationId, message.trim(), result).catch(() => {})
+        }
+      : undefined
 
-      // 写入 Supabase（异步，不阻塞响应）
-      const writePromise = getSupabase().from('messages').insert([
-        {
-          conversation_id: conversationId,
-          role: 'user',
-          content: message.trim(),
-        },
-        {
-          conversation_id: conversationId,
-          role: 'assistant',
-          content: response,
-          tool_calls: toolCalls.length > 0 ? toolCalls : null,
-        },
-      ])
-
-      // 更新对话标题（如果还是"新对话"）
-      const titlePromise = getSupabase()
-        .from('conversations')
-        .select('title')
-        .eq('id', conversationId)
-        .single()
-        .then(({ data }) => {
-          if (data?.title === '新对话') {
-            const shortTitle = message.trim().slice(0, 30)
-            return getSupabase()
-              .from('conversations')
-              .update({ title: shortTitle })
-              .eq('id', conversationId)
-          }
-        })
-
-      // 不 await，让写入和流式响应并行
-      Promise.all([writePromise, titlePromise]).catch(() => {})
-
-      return handleChatRequest(message.trim(), preferencesSummary)
-    }
-
-    return handleChatRequest(message.trim(), preferencesSummary)
+    return handleChatRequest(message.trim(), preferencesSummary, onComplete)
   } catch (error) {
     console.error('Chat API 错误:', error)
     return new Response(JSON.stringify({ error: '服务器内部错误' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
+  }
+}
+
+async function saveToSupabase(
+  conversationId: string,
+  userMessage: string,
+  result: { response: string; toolCalls: ToolCallEvent[] },
+) {
+  await getSupabase().from('messages').insert([
+    { conversation_id: conversationId, role: 'user', content: userMessage },
+    {
+      conversation_id: conversationId,
+      role: 'assistant',
+      content: result.response,
+      tool_calls: result.toolCalls.length > 0 ? result.toolCalls : null,
+    },
+  ])
+
+  // 自动更新对话标题
+  const { data } = await getSupabase()
+    .from('conversations')
+    .select('title')
+    .eq('id', conversationId)
+    .single()
+
+  if (data?.title === '新对话') {
+    await getSupabase()
+      .from('conversations')
+      .update({ title: userMessage.slice(0, 30) })
+      .eq('id', conversationId)
   }
 }

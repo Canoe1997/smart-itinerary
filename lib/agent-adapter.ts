@@ -47,10 +47,12 @@ export interface ToolCallEvent {
  *
  * 每次请求创建新的 Orchestrator 实例（上下文隔离）。
  * Agent 返回完整响应后，通过 ReadableStream 逐 chunk 推送。
+ * 流结束后调用 onComplete 回调（用于持久化等）。
  */
 export async function handleChatRequest(
   userMessage: string,
   preferencesSummary?: string,
+  onComplete?: (result: { response: string; toolCalls: ToolCallEvent[] }) => void,
 ): Promise<Response> {
   const xhs = await getXHSClient()
   const memory = getMemory()
@@ -58,42 +60,44 @@ export async function handleChatRequest(
 
   const orchestrator = createOrchestrator({ xhs, memory, trace })
 
-  // 构建用户输入（可选注入偏好）
   const fullMessage = preferencesSummary
     ? `${userMessage}\n\n[用户偏好: ${preferencesSummary}]`
     : userMessage
 
-  // createTextStreamResponse 要求 ReadableStream<string>（非 Uint8Array）
   const textStream = new ReadableStream<string>({
     async start(controller) {
       try {
+        const collectedToolCalls: ToolCallEvent[] = []
+
         const response = await orchestrator.sendMessage(fullMessage, (toolName) => {
-          // 工具调用开始 -> 发送 SSE 自定义事件
           const event: ToolCallEvent = {
             type: 'tool-call',
             agent: guessAgentName(toolName),
             tool: toolName,
             status: 'running',
           }
+          collectedToolCalls.push(event)
           controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
         })
 
-        // 逐 chunk 推送响应文本
         const chunkSize = 20
         for (let i = 0; i < response.length; i += chunkSize) {
           const chunk = response.slice(i, i + chunkSize)
           controller.enqueue(chunk)
-          // 小延迟模拟流式（总时长约 1-2 秒）
           if (i + chunkSize < response.length) {
             await new Promise((r) => setTimeout(r, 15))
           }
+        }
+
+        // 流结束后触发回调（异步，不阻塞）
+        if (onComplete) {
+          onComplete({ response, toolCalls: collectedToolCalls })
         }
       } catch (error) {
         const errorMsg = `\n\n❌ 发生错误: ${(error as Error).message}`
         controller.enqueue(errorMsg)
       } finally {
         controller.close()
-        // 异步保存 trace
         trace.saveToFile('traces').catch(() => {})
       }
     },
@@ -108,38 +112,4 @@ function guessAgentName(toolName: string): string {
   if (toolName.includes('weather') || toolName.includes('route') || toolName.includes('memory')) return 'advisor'
   if (toolName.includes('doc')) return 'doc'
   return 'orchestrator'
-}
-
-/**
- * 处理聊天请求并返回结果（不直接返回 Response）
- * 用于需要在 route 层写入 Supabase 的场景
- */
-export async function processChatRequest(
-  userMessage: string,
-  preferencesSummary?: string,
-): Promise<{ response: string; toolCalls: ToolCallEvent[] }> {
-  const xhs = await getXHSClient()
-  const memory = getMemory()
-  const trace = createTraceCollector('orchestrator')
-  const orchestrator = createOrchestrator({ xhs, memory, trace })
-
-  const fullMessage = preferencesSummary
-    ? `${userMessage}\n\n[用户偏好: ${preferencesSummary}]`
-    : userMessage
-
-  const collectedToolCalls: ToolCallEvent[] = []
-
-  const response = await orchestrator.sendMessage(fullMessage, (toolName) => {
-    const event: ToolCallEvent = {
-      type: 'tool-call',
-      agent: guessAgentName(toolName),
-      tool: toolName,
-      status: 'running',
-    }
-    collectedToolCalls.push(event)
-  })
-
-  trace.saveToFile('traces').catch(() => {})
-
-  return { response, toolCalls: collectedToolCalls }
 }
