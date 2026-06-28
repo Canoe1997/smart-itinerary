@@ -59,7 +59,8 @@ export function Sidebar() {
     if (deletingId === id) {
       await deleteConversation(id)
       setDeletingId(null)
-      const remaining = conversations.filter((c) => c.id !== id)
+      // Read fresh state from store (not stale closure)
+      const remaining = useConversationStore.getState().conversations
       if (remaining.length > 0) {
         router.push(`/chat/${remaining[0].id}`)
       } else {
