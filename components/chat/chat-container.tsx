@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { MessageBubble } from './message-bubble'
 import { ToolCallDetail } from './tool-call-detail'
 import { InputBar } from './input-bar'
+import { Timeline } from '@/components/itinerary/timeline'
+import { parseItinerary } from '@/lib/itinerary-parser'
 import { useAppStore } from '@/stores/app-store'
 import type { ToolCallEvent } from '@/lib/agent-adapter'
 
@@ -150,23 +152,38 @@ export function ChatContainer() {
             </div>
           )}
 
-          {messages.map((msg) => (
-            <MessageBubble key={msg.id} role={msg.role} content={msg.content}>
-              {msg.toolCalls && msg.toolCalls.length > 0 && (
-                <div className="mb-2">
-                  {msg.toolCalls.map((tc, i) => (
-                    <ToolCallDetail
-                      key={`${tc.tool}-${i}`}
-                      agent={tc.agent}
-                      tool={tc.tool}
-                      status={tc.status}
-                      durationMs={tc.durationMs}
-                    />
-                  ))}
+          {messages.map((msg) => {
+            const toolCalls = msg.toolCalls && msg.toolCalls.length > 0 ? (
+              <div className="mb-2">
+                {msg.toolCalls.map((tc, i) => (
+                  <ToolCallDetail
+                    key={`${tc.tool}-${i}`}
+                    agent={tc.agent}
+                    tool={tc.tool}
+                    status={tc.status}
+                    durationMs={tc.durationMs}
+                  />
+                ))}
+              </div>
+            ) : null
+
+            if (msg.role === 'assistant' && parseItinerary(msg.content)) {
+              return (
+                <div key={msg.id} className="mb-4">
+                  <Timeline content={msg.content} />
+                  <MessageBubble role={msg.role} content={msg.content}>
+                    {toolCalls}
+                  </MessageBubble>
                 </div>
-              )}
-            </MessageBubble>
-          ))}
+              )
+            }
+
+            return (
+              <MessageBubble key={msg.id} role={msg.role} content={msg.content}>
+                {toolCalls}
+              </MessageBubble>
+            )
+          })}
 
           {isLoading && currentToolCalls.length === 0 && (
             <div className="flex justify-start mb-4">
