@@ -1,12 +1,11 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { ChevronRight, FileDown, Loader2, GripVertical } from 'lucide-react'
 import { useAppStore } from '@/stores/app-store'
 import { useConversationStore } from '@/stores/conversation-store'
 import { parseItinerary } from '@/lib/itinerary-parser'
+import { renderItineraryHtml } from '@/lib/itinerary-html'
 import { cn } from '@/lib/utils'
 
 const MIN_WIDTH = 300
@@ -65,6 +64,12 @@ export function PreviewPanel() {
     return null
   }, [messages])
 
+  // 生成和 PDF 完全一致的 HTML
+  const previewHtml = useMemo(() => {
+    if (!itineraryContent) return null
+    return renderItineraryHtml(itineraryContent, '旅行行程')
+  }, [itineraryContent])
+
   const handleExportPdf = useCallback(async () => {
     if (!itineraryContent || isExporting) return
     setIsExporting(true)
@@ -118,6 +123,7 @@ export function PreviewPanel() {
           <GripVertical className="h-3 w-3 text-muted-foreground" />
         </div>
       </div>
+
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h2 className="text-sm font-semibold">行程预览</h2>
         <button
@@ -129,25 +135,16 @@ export function PreviewPanel() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {itineraryContent ? (
-          <div className={cn(
-            'prose prose-sm max-w-none',
-            '[&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
-            'prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground',
-            'prose-p:text-foreground/80 prose-p:leading-relaxed',
-            'prose-li:text-foreground/80 prose-li:leading-relaxed',
-            'prose-code:text-xs prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md',
-            'prose-pre:bg-muted prose-pre:rounded-lg prose-pre:text-xs',
-            'prose-a:text-accent prose-a:underline',
-            'prose-strong:text-foreground prose-strong:font-semibold',
-          )}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {itineraryContent}
-            </ReactMarkdown>
-          </div>
+      <div className="flex-1 overflow-hidden">
+        {previewHtml ? (
+          <iframe
+            srcDoc={previewHtml}
+            className="w-full h-full border-0"
+            title="行程预览"
+            sandbox="allow-same-origin"
+          />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <FileDown className="h-10 w-10 text-muted-foreground/30 mb-3" />
             <p className="text-sm text-muted-foreground">
               暂无行程内容
