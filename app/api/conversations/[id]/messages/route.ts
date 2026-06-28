@@ -3,7 +3,7 @@
  *
  * GET /api/conversations/:id/messages — 获取指定对话的所有消息
  */
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -13,7 +13,7 @@ export async function GET(
   try {
     const { id } = await params
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('messages')
       .select('id, role, content, tool_calls, created_at')
       .eq('conversation_id', id)

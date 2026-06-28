@@ -4,12 +4,12 @@
  * GET  /api/conversations     — 获取最近 50 个对话
  * POST /api/conversations     — 创建新对话
  */
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('conversations')
       .select('id, title, created_at, updated_at')
       .order('updated_at', { ascending: false })
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         ? rawTitle.trim().slice(0, 200)
         : '新对话'
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('conversations')
       .insert({ title })
       .select('id, title, created_at, updated_at')

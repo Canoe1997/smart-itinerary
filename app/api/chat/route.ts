@@ -6,7 +6,7 @@
  * 支持 conversationId 将消息持久化到 Supabase。
  */
 import { handleChatRequest, processChatRequest } from '@/lib/agent-adapter'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       )
 
       // 写入 Supabase（异步，不阻塞响应）
-      const writePromise = supabase.from('messages').insert([
+      const writePromise = getSupabase().from('messages').insert([
         {
           conversation_id: conversationId,
           role: 'user',
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       ])
 
       // 更新对话标题（如果还是"新对话"）
-      const titlePromise = supabase
+      const titlePromise = getSupabase()
         .from('conversations')
         .select('title')
         .eq('id', conversationId)
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
         .then(({ data }) => {
           if (data?.title === '新对话') {
             const shortTitle = message.trim().slice(0, 30)
-            return supabase
+            return getSupabase()
               .from('conversations')
               .update({ title: shortTitle })
               .eq('id', conversationId)

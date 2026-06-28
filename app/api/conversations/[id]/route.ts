@@ -3,7 +3,7 @@
  *
  * DELETE /api/conversations/:id — 删除指定对话
  */
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 import { NextResponse } from 'next/server'
 
 export async function DELETE(
@@ -13,7 +13,7 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('conversations')
       .delete()
       .eq('id', id)

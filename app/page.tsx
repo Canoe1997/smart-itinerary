@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { getSupabase } from '@/lib/supabase'
 
 export default async function Home() {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('conversations')
     .select('id')
     .order('updated_at', { ascending: false })
@@ -13,7 +13,7 @@ export default async function Home() {
     redirect(`/chat/${data.id}`)
   }
 
-  const { data: created } = await supabase
+  const { data: created } = await getSupabase()
     .from('conversations')
     .insert({ title: '新对话' })
     .select('id')
