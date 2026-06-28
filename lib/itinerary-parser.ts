@@ -61,11 +61,14 @@ export function parseItinerary(markdown: string): DayPlan[] | null {
   for (const line of lines) {
     if (!line) continue
 
-    // 匹配天数标题：## Day 1 / ## 第1天 / ### Day 1 — 东京
-    const dayMatch = line.match(/^#{1,3}\s*(?:Day\s*(\d+)|第(\d+)天)/i)
+    // 匹配天数标题：支持更多格式
+    // ## Day 1 / ## 第1天 / **Day 1** / Day 1: / 第1天：
+    const dayMatch = line.match(
+      /^#{1,3}\s*(?:Day\s*(\d+)|第(\d+)天)|^\*{2}(?:Day\s*(\d+)|第(\d+)天)|^(?:Day\s*(\d+)|第(\d+)天)\s*[:：—-]/i
+    )
     if (dayMatch) {
-      const dayNum = parseInt(dayMatch[1] ?? dayMatch[2], 10)
-      currentDay = { day: dayNum, title: line.replace(/^#{1,3}\s*/, ''), timeSlots: [] }
+      const dayNum = parseInt(dayMatch[1] ?? dayMatch[2] ?? dayMatch[3] ?? dayMatch[4] ?? dayMatch[5] ?? dayMatch[6], 10)
+      currentDay = { day: dayNum, title: line.replace(/^#{1,3}\s*/, '').replace(/^\*{2}|\*{2}$/g, ''), timeSlots: [] }
       days.push(currentDay)
       currentTimeSlot = null
       continue
@@ -73,17 +76,28 @@ export function parseItinerary(markdown: string): DayPlan[] | null {
 
     if (!currentDay) continue
 
-    // 匹配时间段：**上午** / - 上午：/ 🌅 上午
+    // 匹配时间段
     const period = detectPeriod(line)
     if (period) {
-      currentTimeSlot = { period, label: line.replace(/^[-*]\s*/, '').replace(/[🌅🌞🌆🍽️]/g, '').trim(), activities: [], locations: [] }
-      currentDay.timeSlots.push(currentTimeSlot)
+      // 去重：如果当前 Day 已有同类型 period，合并而非新建
+      const existing = currentDay.timeSlots.find((ts) => ts.period === period)
+      if (existing) {
+        currentTimeSlot = existing
+      } else {
+        currentTimeSlot = { period, label: line.replace(/^[-*]\s*/, '').replace(/[🌅🌞🌆🍽️]/g, '').trim(), activities: [], locations: [] }
+        currentDay.timeSlots.push(currentTimeSlot)
+      }
       continue
     }
 
-    // 匹配活动行：- xxx 或 * xxx
+    // 匹配活动行
     const activityMatch = line.match(/^[-*]\s+(.+)/)
-    if (activityMatch && currentTimeSlot) {
+    if (activityMatch) {
+      // 兜底：如果无时间段，默认归入 morning
+      if (!currentTimeSlot) {
+        currentTimeSlot = { period: 'morning', label: '全天', activities: [], locations: [] }
+        currentDay.timeSlots.push(currentTimeSlot)
+      }
       const text = activityMatch[1]
       currentTimeSlot.activities.push(text)
       currentTimeSlot.locations.push(...extractLocations(text))
