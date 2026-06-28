@@ -13,18 +13,16 @@ import { createTraceCollector } from '@/src/trace/collector'
 
 type XHSClient = ReturnType<typeof createXHSClient>
 
-/** 全局单例：XHS 客户端（避免重复启动 MCP 进程） */
-let xhsInstance: XHSClient | null = null
-let xhsReady = false
+/** Promise-based 单例：避免并发请求重复启动 MCP 进程 */
+let xhsPromise: Promise<XHSClient> | null = null
 
-async function getXHSClient(): Promise<XHSClient> {
-  if (xhsInstance && xhsReady) return xhsInstance
-
-  const config = loadConfig()
-  xhsInstance = createXHSClient(config.xhsMcpPath)
-  await xhsInstance.start()
-  xhsReady = true
-  return xhsInstance
+function getXHSClient(): Promise<XHSClient> {
+  if (!xhsPromise) {
+    const config = loadConfig()
+    const client = createXHSClient(config.xhsMcpPath)
+    xhsPromise = client.start().then(() => client)
+  }
+  return xhsPromise
 }
 
 function getMemory(): ReturnType<typeof createMemory> | null {
@@ -68,8 +66,6 @@ export async function handleChatRequest(
   // createTextStreamResponse 要求 ReadableStream<string>（非 Uint8Array）
   const textStream = new ReadableStream<string>({
     async start(controller) {
-      const startTime = Date.now()
-
       try {
         const response = await orchestrator.sendMessage(fullMessage, (toolName) => {
           // 工具调用开始 -> 发送 SSE 自定义事件
