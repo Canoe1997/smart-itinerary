@@ -9,7 +9,7 @@ import { existsSync, unlinkSync } from 'fs'
 import { join } from 'path'
 
 function getCookiesPath(): string {
-  const mcpPath = process.env.XHS_MCP_PATH ?? 'mcp-servers/xiaohongshu-mcp'
+  const mcpPath = process.env.XHS_MCP_PATH || 'mcp-servers/xiaohongshu-mcp'
   return join(process.cwd(), mcpPath, 'cookies.json')
 }
 

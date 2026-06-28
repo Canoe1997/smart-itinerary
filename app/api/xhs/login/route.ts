@@ -16,7 +16,7 @@ const REQUIRED_COOKIES = ['a1', 'web_session'] as const
 let loginInProgress = false
 
 function getCookiesPath(): string {
-  const mcpPath = process.env.XHS_MCP_PATH ?? 'mcp-servers/xiaohongshu-mcp'
+  const mcpPath = process.env.XHS_MCP_PATH || 'mcp-servers/xiaohongshu-mcp'
   return join(process.cwd(), mcpPath, 'cookies.json')
 }
 

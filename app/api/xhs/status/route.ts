@@ -12,7 +12,7 @@ const COOKIE_MAX_AGE_DAYS = 7
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 function getCookiesPath(): string {
-  const mcpPath = process.env.XHS_MCP_PATH ?? 'mcp-servers/xiaohongshu-mcp'
+  const mcpPath = process.env.XHS_MCP_PATH || 'mcp-servers/xiaohongshu-mcp'
   return join(process.cwd(), mcpPath, 'cookies.json')
 }
 
