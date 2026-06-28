@@ -8,7 +8,7 @@ import { createTextStreamResponse } from 'ai'
 import { loadConfig } from '@/src/config'
 import { createXHSClient } from '@/src/mcp/xiaohongshu'
 import { createMemory } from '@/src/memory/index'
-import { createOrchestrator } from '@/src/agent/orchestrator'
+import { createOrchestrator, extractXHSNotes } from '@/src/agent/orchestrator'
 import { createTraceCollector } from '@/src/trace/collector'
 
 type XHSClient = ReturnType<typeof createXHSClient>
@@ -105,6 +105,12 @@ export async function handleChatRequest(
           if (i + chunkSize < response.length) {
             await new Promise((r) => setTimeout(r, 15))
           }
+        }
+
+        // Extract XHS source citations
+        const sources = extractXHSNotes(orchestrator.getHistory())
+        if (sources.length > 0) {
+          controller.enqueue(`data: ${JSON.stringify({ type: 'sources', sources })}\n\n`)
         }
 
         // 流结束后触发回调（异步，不阻塞）

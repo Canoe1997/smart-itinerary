@@ -18,6 +18,8 @@ interface AppState {
   previewCollapsed: boolean
   toggleSidebar: () => void
   togglePreview: () => void
+  latestSources: Array<{ id: string; title: string; author: string; url: string; likes: number; excerpt: string }> | null
+  setLatestSources: (sources: AppState['latestSources']) => void
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -49,6 +51,8 @@ export const useAppStore = create<AppState>()(
         return `${defaultDays}天行程, ${groupSize}人, ${budgetMap[budget]}预算, ${language}`
       },
 
+      latestSources: null,
+      setLatestSources: (sources) => set({ latestSources: sources }),
       sidebarCollapsed: false,
       previewCollapsed: false,
       toggleSidebar: () =>

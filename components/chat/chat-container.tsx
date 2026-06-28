@@ -34,6 +34,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   const [currentToolCalls, setCurrentToolCalls] = useState<ToolCallEvent[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const preferences = useAppStore((s) => s.getPreferencesSummary())
+  const setLatestSources = useAppStore((s) => s.setLatestSources)
   const storedMessages = useConversationStore((s) => s.messages)
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
       const decoder = new TextDecoder()
       let assistantContent = ''
       let toolCalls: ToolCallEvent[] = []
+      let sourcesData: Array<{ id: string; title: string; author: string; url: string; likes: number; excerpt: string }> | null = null
       let buffer = ''
 
       const assistantId = `assistant-${Date.now()}`
@@ -94,20 +96,25 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
-                const parsed = JSON.parse(line.slice(6)) as ToolCallEvent
-                if (parsed.type === 'tool-call') {
-                  if (parsed.status === 'done') {
+                const parsed = JSON.parse(line.slice(6))
+                if (parsed.type === 'sources') {
+                  sourcesData = parsed.sources
+                  continue
+                }
+                const tcParsed = parsed as ToolCallEvent
+                if (tcParsed.type === 'tool-call') {
+                  if (tcParsed.status === 'done') {
                     // Update last matching running toolCall to done
                     let updated = false
                     toolCalls = toolCalls.map((tc) => {
-                      if (!updated && tc.tool === parsed.tool && tc.status === 'running') {
+                      if (!updated && tc.tool === tcParsed.tool && tc.status === 'running') {
                         updated = true
-                        return { ...tc, status: 'done' as const, durationMs: parsed.durationMs }
+                        return { ...tc, status: 'done' as const, durationMs: tcParsed.durationMs }
                       }
                       return tc
                     })
                   } else {
-                    toolCalls = [...toolCalls, parsed]
+                    toolCalls = [...toolCalls, tcParsed]
                   }
                   setCurrentToolCalls([...toolCalls])
                 }
@@ -127,6 +134,11 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
               : m,
           ),
         )
+      }
+
+      // Store sources for preview panel
+      if (sourcesData) {
+        setLatestSources(sourcesData)
       }
     } catch (error) {
       const errorMsg: LiveMessage = {

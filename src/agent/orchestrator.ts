@@ -246,7 +246,7 @@ export function createOrchestrator(options: {
 }
 
 /** 从子 Agent 历史中提取小红书帖子信息 */
-export function extractXHSNotes(history: ReadonlyArray<{ role: string; content: unknown }>): Array<{
+export function extractXHSNotes(history: ReadonlyArray<{ role: string; content?: unknown }>): Array<{
   id: string; title: string; author: string; url: string; likes: number; excerpt: string
 }> {
   const notes: Array<{ id: string; title: string; author: string; url: string; likes: number; excerpt: string }> = []
