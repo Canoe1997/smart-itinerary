@@ -10,6 +10,7 @@
  */
 import { createAgent } from './index.js'
 import type { Agent } from './index.js'
+import type { ToolEvent } from './index.js'
 import { createToolRegistry } from '../tools/registry.js'
 import type { Tool } from '../tools/registry.js'
 import type { createXHSClient } from '../mcp/xiaohongshu.js'
@@ -28,7 +29,7 @@ import {
 type XHSClient = ReturnType<typeof createXHSClient>
 type Memory = ReturnType<typeof createMemory>
 
-function createResearchAgentTool(xhs: XHSClient, trace?: TraceCollector): Tool {
+function createResearchAgentTool(xhs: XHSClient, trace?: TraceCollector, onToolEvent?: (event: ToolEvent) => void): Tool {
   return {
     name: 'research_agent',
     description:
@@ -74,6 +75,9 @@ function createResearchAgentTool(xhs: XHSClient, trace?: TraceCollector): Tool {
       try {
         const result = await researcher.sendMessage(
           `请搜索并深度分析关于"${destination} ${query}"的旅行攻略。返回结构化研究摘要。`,
+          (event) => {
+            onToolEvent?.({ ...event, parentTool: 'research_agent' })
+          },
         )
         console.log(`   ✅ [攻略研究员] 完成，返回研究摘要`)
         return result
@@ -86,7 +90,7 @@ function createResearchAgentTool(xhs: XHSClient, trace?: TraceCollector): Tool {
   }
 }
 
-function createAdvisorAgentTool(memory: Memory | null, trace?: TraceCollector): Tool {
+function createAdvisorAgentTool(memory: Memory | null, trace?: TraceCollector, onToolEvent?: (event: ToolEvent) => void): Tool {
   return {
     name: 'advisor_agent',
     description:
@@ -144,7 +148,9 @@ function createAdvisorAgentTool(memory: Memory | null, trace?: TraceCollector): 
         .join('\n')
 
       try {
-        const result = await advisor.sendMessage(task)
+        const result = await advisor.sendMessage(task, (event) => {
+          onToolEvent?.({ ...event, parentTool: 'advisor_agent' })
+        })
         console.log(`   ✅ [美食住宿顾问] 完成，返回推荐列表`)
         return result
       } catch (error: unknown) {
@@ -219,12 +225,13 @@ export function createOrchestrator(options: {
   xhs: XHSClient
   memory: Memory | null
   trace?: TraceCollector
+  onToolEvent?: (event: ToolEvent) => void
 }): Agent {
-  const { xhs, memory, trace } = options
+  const { xhs, memory, trace, onToolEvent } = options
 
   const orchestratorRegistry = createToolRegistry()
-  orchestratorRegistry.register(createResearchAgentTool(xhs, trace))
-  orchestratorRegistry.register(createAdvisorAgentTool(memory, trace))
+  orchestratorRegistry.register(createResearchAgentTool(xhs, trace, onToolEvent))
+  orchestratorRegistry.register(createAdvisorAgentTool(memory, trace, onToolEvent))
   orchestratorRegistry.register(createDocAgentTool(trace))
 
   console.log(`🤖 编排器就绪 (${orchestratorRegistry.size()} 个 Agent 工具)`)
@@ -236,4 +243,52 @@ export function createOrchestrator(options: {
     name: 'orchestrator',
     trace,
   })
+}
+
+/** 从子 Agent 历史中提取小红书帖子信息 */
+export function extractXHSNotes(history: ReadonlyArray<{ role: string; content: unknown }>): Array<{
+  id: string; title: string; author: string; url: string; likes: number; excerpt: string
+}> {
+  const notes: Array<{ id: string; title: string; author: string; url: string; likes: number; excerpt: string }> = []
+  const seen = new Set<string>()
+
+  for (const msg of history) {
+    if (msg.role !== 'tool') continue
+    const content = typeof msg.content === 'string' ? msg.content : ''
+    try {
+      const data = JSON.parse(content)
+      // search_notes returns array
+      if (Array.isArray(data)) {
+        for (const item of data) {
+          if (item.id && !seen.has(item.id)) {
+            seen.add(item.id)
+            notes.push({
+              id: item.id,
+              title: item.display_title || item.title || '未知标题',
+              author: item.nickname || '未知作者',
+              url: `https://www.xiaohongshu.com/explore/${item.id}`,
+              likes: parseInt(item.interact_info?.liked_count ?? '0', 10) || 0,
+              excerpt: '',
+            })
+          }
+        }
+      }
+      // get_note returns single object
+      if (data?.id && data?.desc && !seen.has(data.id)) {
+        seen.add(data.id)
+        notes.push({
+          id: data.id,
+          title: data.title || '未知标题',
+          author: data.nickname || '未知作者',
+          url: `https://www.xiaohongshu.com/explore/${data.id}`,
+          likes: parseInt(data.interact_info?.liked_count ?? '0', 10) || 0,
+          excerpt: (data.desc || '').slice(0, 100),
+        })
+      }
+    } catch {
+      // Non-JSON content, skip
+    }
+  }
+
+  return notes
 }
