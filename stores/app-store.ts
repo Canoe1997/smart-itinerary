@@ -14,6 +14,10 @@ interface AppState {
   setTheme: (theme: UserPreferences['theme']) => void
   setPreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void
   getPreferencesSummary: () => string
+  sidebarCollapsed: boolean
+  previewCollapsed: boolean
+  toggleSidebar: () => void
+  togglePreview: () => void
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -44,6 +48,13 @@ export const useAppStore = create<AppState>()(
         const budgetMap = { low: '经济型', medium: '中等', high: '高端' }
         return `${defaultDays}天行程, ${groupSize}人, ${budgetMap[budget]}预算, ${language}`
       },
+
+      sidebarCollapsed: false,
+      previewCollapsed: false,
+      toggleSidebar: () =>
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      togglePreview: () =>
+        set((state) => ({ previewCollapsed: !state.previewCollapsed })),
     }),
     {
       name: 'smart-itinerary-preferences',
