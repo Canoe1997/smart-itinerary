@@ -1,6 +1,7 @@
 'use client'
 
 import { Sidebar } from '@/components/layout/sidebar'
+import { PreviewPanel } from '@/components/layout/preview-panel'
 
 export default function ChatLayout({
   children,
@@ -13,6 +14,7 @@ export default function ChatLayout({
       <main className="flex-1 min-w-0 flex flex-col">
         {children}
       </main>
+      <PreviewPanel />
     </div>
   )
 }
