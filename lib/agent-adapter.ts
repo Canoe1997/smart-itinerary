@@ -109,3 +109,37 @@ function guessAgentName(toolName: string): string {
   if (toolName.includes('doc')) return 'doc'
   return 'orchestrator'
 }
+
+/**
+ * 处理聊天请求并返回结果（不直接返回 Response）
+ * 用于需要在 route 层写入 Supabase 的场景
+ */
+export async function processChatRequest(
+  userMessage: string,
+  preferencesSummary?: string,
+): Promise<{ response: string; toolCalls: ToolCallEvent[] }> {
+  const xhs = await getXHSClient()
+  const memory = getMemory()
+  const trace = createTraceCollector('orchestrator')
+  const orchestrator = createOrchestrator({ xhs, memory, trace })
+
+  const fullMessage = preferencesSummary
+    ? `${userMessage}\n\n[用户偏好: ${preferencesSummary}]`
+    : userMessage
+
+  const collectedToolCalls: ToolCallEvent[] = []
+
+  const response = await orchestrator.sendMessage(fullMessage, (toolName) => {
+    const event: ToolCallEvent = {
+      type: 'tool-call',
+      agent: guessAgentName(toolName),
+      tool: toolName,
+      status: 'running',
+    }
+    collectedToolCalls.push(event)
+  })
+
+  trace.saveToFile('traces').catch(() => {})
+
+  return { response, toolCalls: collectedToolCalls }
+}
