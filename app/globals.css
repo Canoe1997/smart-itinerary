@@ -1,28 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
+  --background: oklch(0.99 0 0);
   --foreground: oklch(0.145 0.017 285.823);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0.017 285.823);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0.017 285.823);
-  --primary: oklch(0.45 0.15 250);
+  --primary: oklch(0.35 0.12 250);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  --secondary: oklch(0.96 0 0);
   --secondary-foreground: oklch(0.205 0.015 285.823);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0.019 285.823);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0.015 285.823);
+  --muted: oklch(0.965 0.002 285.823);
+  --muted-foreground: oklch(0.48 0.02 285.823);
+  --accent: oklch(0.96 0.005 80);
+  --accent-foreground: oklch(0.35 0.1 75);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0.007 285.823);
-  --input: oklch(0.922 0.007 285.823);
-  --ring: oklch(0.45 0.15 250);
-  --radius: 0.625rem;
+  --border: oklch(0.91 0.005 285.823);
+  --input: oklch(0.91 0.005 285.823);
+  --ring: oklch(0.35 0.12 250);
+  --radius: 0.75rem;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -39,37 +41,37 @@
 }
 
 .dark {
-  --background: oklch(0.145 0.017 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0.017 285.823);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0.017 285.823);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.55 0.18 250);
+  --background: oklch(0.13 0.015 285.823);
+  --foreground: oklch(0.93 0 0);
+  --card: oklch(0.17 0.015 285.823);
+  --card-foreground: oklch(0.93 0 0);
+  --popover: oklch(0.17 0.015 285.823);
+  --popover-foreground: oklch(0.93 0 0);
+  --primary: oklch(0.6 0.16 250);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0.019 285.823);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0.019 285.823);
-  --muted-foreground: oklch(0.708 0.016 285.823);
-  --accent: oklch(0.269 0.019 285.823);
-  --accent-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.22 0.015 285.823);
+  --secondary-foreground: oklch(0.93 0 0);
+  --muted: oklch(0.22 0.015 285.823);
+  --muted-foreground: oklch(0.63 0.015 285.823);
+  --accent: oklch(0.22 0.02 80);
+  --accent-foreground: oklch(0.75 0.12 75);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.269 0.019 285.823);
-  --input: oklch(0.269 0.019 285.823);
-  --ring: oklch(0.55 0.18 250);
+  --border: oklch(0.24 0.015 285.823);
+  --input: oklch(0.24 0.015 285.823);
+  --ring: oklch(0.6 0.16 250);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0.015 285.823);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.55 0.18 250);
+  --sidebar: oklch(0.17 0.015 285.823);
+  --sidebar-foreground: oklch(0.93 0 0);
+  --sidebar-primary: oklch(0.6 0.16 250);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0.019 285.823);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0.019 285.823);
+  --sidebar-accent: oklch(0.22 0.015 285.823);
+  --sidebar-accent-foreground: oklch(0.93 0 0);
+  --sidebar-border: oklch(0.24 0.015 285.823);
   --sidebar-ring: oklch(0.488 0.243 264.376);
 }
 
@@ -118,6 +120,21 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Smooth theme transitions */
+  *, *::before, *::after {
+    transition-property: background-color, border-color, color;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+  /* Respect reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+    }
   }
 }
