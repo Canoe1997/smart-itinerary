@@ -77,7 +77,20 @@ export async function handleChatRequest(
             status: event.status === 'start' ? 'running' : 'done',
             durationMs: event.durationMs,
           }
-          collectedToolCalls.push(eventSse)
+
+          if (event.status === 'end') {
+            // Update last matching running entry to done
+            for (let i = collectedToolCalls.length - 1; i >= 0; i--) {
+              if (collectedToolCalls[i].tool === event.tool && collectedToolCalls[i].status === 'running') {
+                collectedToolCalls[i] = { ...collectedToolCalls[i], status: 'done', durationMs: event.durationMs }
+                break
+              }
+            }
+          } else {
+            collectedToolCalls.push(eventSse)
+          }
+
+          // Always send SSE event to frontend
           controller.enqueue(`data: ${JSON.stringify(eventSse)}\n\n`)
         })
 
