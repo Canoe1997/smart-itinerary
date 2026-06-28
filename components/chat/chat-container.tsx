@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { MapPin, Compass, Sparkles, Check, Loader2 } from 'lucide-react'
+import { MapPin, Compass, Sparkles, Check, Loader2, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
 import { MessageBubble } from './message-bubble'
 import { ToolCallDetail } from './tool-call-detail'
 import { InputBar } from './input-bar'
@@ -56,6 +57,7 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
   const [liveMessages, setLiveMessages] = useState<LiveMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentToolCalls, setCurrentToolCalls] = useState<ToolCallEvent[]>([])
+  const [xhsWarning, setXhsWarning] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const preferences = useAppStore((s) => s.getPreferencesSummary())
   const setLatestSources = useAppStore((s) => s.setLatestSources)
@@ -125,6 +127,12 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
                   sourcesData = parsed.sources
                   continue
                 }
+                if (parsed.type === 'xhs_status') {
+                  if (!parsed.connected) {
+                    setXhsWarning(parsed.message)
+                  }
+                  continue
+                }
                 const tcParsed = parsed as ToolCallEvent
                 if (tcParsed.type === 'tool-call') {
                   if (tcParsed.status === 'done') {
@@ -181,6 +189,20 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
     <div className="flex flex-1 flex-col min-h-0">
       <div className="flex-1 overflow-y-auto px-4 py-6" role="log" aria-live="polite" aria-label="聊天消息">
         <div className="mx-auto max-w-3xl">
+          {/* XHS 连接警告横幅 */}
+          {xhsWarning && (
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="flex-1">{xhsWarning}，攻略搜索不可用</span>
+              <Link
+                href="/settings"
+                className="shrink-0 font-medium underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-200"
+              >
+                去设置
+              </Link>
+            </div>
+          )}
+
           {liveMessages.length === 0 && (
             <div className="flex flex-col items-center justify-center pt-[15vh]">
               <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10">

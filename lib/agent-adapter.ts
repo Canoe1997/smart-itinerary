@@ -5,6 +5,8 @@
  * MiMo API 返回完整字符串后，通过 chunk 推送模拟流式体验。
  */
 import { createTextStreamResponse } from 'ai'
+import { existsSync, readFileSync } from 'fs'
+import { join } from 'path'
 import { loadConfig } from '@/src/config'
 import { createXHSClient } from '@/src/mcp/xiaohongshu'
 import { createMemory } from '@/src/memory/index'
@@ -45,6 +47,38 @@ export interface ToolCallEvent {
   parentTool?: string
 }
 
+const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+/** 轻量级 XHS Cookie 健康检查（不启动 MCP 进程） */
+function checkXHSCookiesHealth(): { connected: boolean; message: string } {
+  try {
+    const config = loadConfig()
+    const cookiePath = join(process.cwd(), config.xhsMcpPath, 'cookies.json')
+
+    if (!existsSync(cookiePath)) {
+      return { connected: false, message: '小红书未连接' }
+    }
+
+    const raw = readFileSync(cookiePath, 'utf-8')
+    const cookies = JSON.parse(raw)
+
+    if (!cookies.a1 || !cookies.web_session) {
+      return { connected: false, message: '小红书 Cookie 不完整' }
+    }
+
+    if (cookies.saved_at) {
+      const age = Date.now() - new Date(cookies.saved_at).getTime()
+      if (age > COOKIE_MAX_AGE_MS) {
+        return { connected: false, message: '小红书 Cookie 已过期' }
+      }
+    }
+
+    return { connected: true, message: '小红书已连接' }
+  } catch {
+    return { connected: false, message: '小红书状态检查失败' }
+  }
+}
+
 /**
  * 处理聊天请求 -- 核心适配函数
  *
@@ -70,6 +104,10 @@ export async function handleChatRequest(
   const textStream = new ReadableStream<string>({
     async start(controller) {
       try {
+        // 启动前检查 XHS Cookie 健康状态
+        const xhsHealth = checkXHSCookiesHealth()
+        controller.enqueue(`data: ${JSON.stringify({ type: 'xhs_status', connected: xhsHealth.connected, message: xhsHealth.message })}\n\n`)
+
         const collectedToolCalls: ToolCallEvent[] = []
 
         const response = await orchestrator.sendMessage(fullMessage, (event) => {

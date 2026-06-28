@@ -13,6 +13,12 @@ import type { createXHSClient } from '../mcp/xiaohongshu.js'
 
 type XHSClient = ReturnType<typeof createXHSClient>
 
+/** 检测是否为 Cookie/认证相关的错误 */
+function isCookieError(message: string): boolean {
+  const patterns = ['cookie', 'Cookie', '验证', 'verify', 'captcha', '过期', 'expired', 'session', '登录', '风控']
+  return patterns.some((p) => message.includes(p))
+}
+
 /**
  * 创建小红书搜索工具
  *
@@ -37,12 +43,23 @@ export function createSearchNotesTool(xhs: XHSClient): Tool {
     async execute(args) {
       const keyword = args.keyword as string
       if (!keyword?.trim()) return '错误：请提供搜索关键词'
-      const result = await xhs.searchNotes(keyword.trim())
-      if (result.isError) {
-        return `搜索失败: ${result.content[0]?.text ?? '未知错误'}`
+      try {
+        const result = await xhs.searchNotes(keyword.trim())
+        if (result.isError) {
+          const errText = result.content[0]?.text ?? '未知错误'
+          if (isCookieError(errText)) {
+            return `XHS_SEARCH_FAILED: 小红书搜索失败 — ${errText}。请告知用户小红书连接已失效，建议前往设置页重新连接。不要编造任何小红书帖子数据。`
+          }
+          return `搜索失败: ${errText}`
+        }
+        return result.content[0]?.text ?? '无搜索结果'
+      } catch (error) {
+        const msg = (error as Error).message ?? '未知错误'
+        if (isCookieError(msg)) {
+          return `XHS_SEARCH_FAILED: 小红书搜索失败 — ${msg}。请告知用户小红书连接已失效，建议前往设置页重新连接。不要编造任何小红书帖子数据。`
+        }
+        return `搜索异常: ${msg}`
       }
-      // 精简返回内容，避免撑爆上下文窗口
-      return result.content[0]?.text ?? '无搜索结果'
     },
   }
 }
@@ -70,11 +87,23 @@ export function createGetNoteTool(xhs: XHSClient): Tool {
     },
     async execute(args) {
       const noteId = args.noteId as string
-      const result = await xhs.getNote(noteId)
-      if (result.isError) {
-        return `获取详情失败: ${result.content[0]?.text ?? '未知错误'}`
+      try {
+        const result = await xhs.getNote(noteId)
+        if (result.isError) {
+          const errText = result.content[0]?.text ?? '未知错误'
+          if (isCookieError(errText)) {
+            return `XHS_SEARCH_FAILED: 小红书获取详情失败 — ${errText}`
+          }
+          return `获取详情失败: ${errText}`
+        }
+        return result.content[0]?.text ?? '无笔记内容'
+      } catch (error) {
+        const msg = (error as Error).message ?? '未知错误'
+        if (isCookieError(msg)) {
+          return `XHS_SEARCH_FAILED: 小红书获取详情失败 — ${msg}`
+        }
+        return `获取详情异常: ${msg}`
       }
-      return result.content[0]?.text ?? '无笔记内容'
     },
   }
 }

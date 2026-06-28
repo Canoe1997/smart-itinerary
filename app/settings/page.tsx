@@ -5,6 +5,7 @@ import { ArrowLeft, Palette, Luggage, Activity } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useAppStore } from '@/stores/app-store'
+import { XhsConnectionCard } from '@/components/settings/xhs-connection'
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -104,6 +105,9 @@ export default function SettingsPage() {
             </div>
           </div>
         </section>
+
+        {/* 小红书连接 */}
+        <XhsConnectionCard />
 
         {/* 推理轨迹 */}
         <section className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
