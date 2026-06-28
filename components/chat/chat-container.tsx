@@ -96,7 +96,19 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
               try {
                 const parsed = JSON.parse(line.slice(6)) as ToolCallEvent
                 if (parsed.type === 'tool-call') {
-                  toolCalls = [...toolCalls, parsed]
+                  if (parsed.status === 'done') {
+                    // Update last matching running toolCall to done
+                    let updated = false
+                    toolCalls = toolCalls.map((tc) => {
+                      if (!updated && tc.tool === parsed.tool && tc.status === 'running') {
+                        updated = true
+                        return { ...tc, status: 'done' as const, durationMs: parsed.durationMs }
+                      }
+                      return tc
+                    })
+                  } else {
+                    toolCalls = [...toolCalls, parsed]
+                  }
                   setCurrentToolCalls([...toolCalls])
                 }
               } catch {
