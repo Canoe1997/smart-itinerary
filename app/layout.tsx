@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { ThemeProvider } from '@/components/layout/theme-provider'
+import { Header } from '@/components/layout/header'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Header />
           {children}
         </ThemeProvider>
       </body>
