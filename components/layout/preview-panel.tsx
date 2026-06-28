@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import { ChevronRight, FileDown, Loader2, GripVertical } from 'lucide-react'
+import { ChevronRight, FileDown, Loader2, GripVertical, Map, BookOpen } from 'lucide-react'
+import { SourceCard } from './source-card'
 import { useAppStore } from '@/stores/app-store'
 import { useConversationStore } from '@/stores/conversation-store'
 import { parseItinerary } from '@/lib/itinerary-parser'
@@ -16,6 +17,8 @@ export function PreviewPanel() {
   const { previewCollapsed, togglePreview } = useAppStore()
   const messages = useConversationStore((s) => s.messages)
   const [isExporting, setIsExporting] = useState(false)
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'sources'>('itinerary')
+  const latestSources = useAppStore((s) => s.latestSources)
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const isDraggingRef = useRef(false)
   const startXRef = useRef(0)
@@ -125,7 +128,32 @@ export function PreviewPanel() {
       </div>
 
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <h2 className="text-sm font-semibold">行程预览</h2>
+        <div className="flex items-center gap-2">
+          {latestSources && latestSources.length > 0 ? (
+            <>
+              <button
+                onClick={() => setActiveTab('itinerary')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                  activeTab === 'itinerary' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Map className="h-3 w-3" />
+                行程
+              </button>
+              <button
+                onClick={() => setActiveTab('sources')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                  activeTab === 'sources' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <BookOpen className="h-3 w-3" />
+                攻略来源 ({latestSources.length})
+              </button>
+            </>
+          ) : (
+            <h2 className="text-sm font-semibold">行程预览</h2>
+          )}
+        </div>
         <button
           onClick={togglePreview}
           className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
@@ -136,22 +164,26 @@ export function PreviewPanel() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {previewHtml ? (
-          <iframe
-            srcDoc={previewHtml}
-            className="w-full h-full border-0"
-            title="行程预览"
-            sandbox="allow-same-origin"
-          />
+        {activeTab === 'itinerary' ? (
+          previewHtml ? (
+            <iframe
+              srcDoc={previewHtml}
+              className="w-full h-full border-0"
+              title="行程预览"
+              sandbox="allow-same-origin"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <FileDown className="h-10 w-10 text-muted-foreground/30 mb-3" />
+              <p className="text-sm text-muted-foreground">暂无行程内容</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">向小旅描述你的旅行需求，行程会在这里预览</p>
+            </div>
+          )
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <FileDown className="h-10 w-10 text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">
-              暂无行程内容
-            </p>
-            <p className="text-xs text-muted-foreground/60 mt-1">
-              向小旅描述你的旅行需求，行程会在这里预览
-            </p>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {latestSources?.map((source) => (
+              <SourceCard key={source.id} {...source} />
+            ))}
           </div>
         )}
       </div>
