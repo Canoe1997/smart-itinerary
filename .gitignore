@@ -45,3 +45,6 @@ out/
 
 # TypeScript build info
 tsconfig.tsbuildinfo
+.superpowers/
+sql-result.md
+sql-execution-result.png
