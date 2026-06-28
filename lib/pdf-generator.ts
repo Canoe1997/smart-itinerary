@@ -5,6 +5,19 @@
  */
 import puppeteer from 'puppeteer'
 import { marked } from 'marked'
+import { existsSync } from 'fs'
+
+/** 查找系统 Chrome 路径（macOS / Linux） */
+function findChromePath(): string | undefined {
+  const candidates = [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+  ]
+  return candidates.find((p) => existsSync(p))
+}
 
 /** 转义 HTML 特殊字符（防止 XSS） */
 function escapeHtml(text: string): string {
@@ -116,8 +129,10 @@ function renderItineraryHtml(markdown: string, title: string): string {
  * 生成 PDF Buffer
  */
 export async function generatePdf(markdown: string, title: string): Promise<Buffer> {
+  const chromePath = findChromePath()
   const browser = await puppeteer.launch({
     headless: true,
+    ...(chromePath ? { executablePath: chromePath } : {}),
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   })
 
