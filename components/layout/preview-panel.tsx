@@ -1,18 +1,59 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { ChevronRight, FileDown, Loader2 } from 'lucide-react'
+import { ChevronRight, FileDown, Loader2, GripVertical } from 'lucide-react'
 import { useAppStore } from '@/stores/app-store'
 import { useConversationStore } from '@/stores/conversation-store'
 import { parseItinerary } from '@/lib/itinerary-parser'
 import { cn } from '@/lib/utils'
 
+const MIN_WIDTH = 300
+const MAX_WIDTH = 800
+const DEFAULT_WIDTH = 460
+
 export function PreviewPanel() {
   const { previewCollapsed, togglePreview } = useAppStore()
   const messages = useConversationStore((s) => s.messages)
   const [isExporting, setIsExporting] = useState(false)
+  const [width, setWidth] = useState(DEFAULT_WIDTH)
+  const isDraggingRef = useRef(false)
+  const startXRef = useRef(0)
+  const startWidthRef = useRef(0)
+
+  // Drag resize handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDraggingRef.current = true
+    startXRef.current = e.clientX
+    startWidthRef.current = width
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [width])
+
+  useEffect(() => {
+    function handleMouseMove(e: MouseEvent) {
+      if (!isDraggingRef.current) return
+      const delta = startXRef.current - e.clientX
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidthRef.current + delta))
+      setWidth(newWidth)
+    }
+
+    function handleMouseUp() {
+      if (!isDraggingRef.current) return
+      isDraggingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
 
   const itineraryContent = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -64,7 +105,19 @@ export function PreviewPanel() {
   }
 
   return (
-    <aside className="flex h-full w-[340px] flex-col bg-card border-l border-border shrink-0">
+    <aside
+      className="flex h-full flex-col bg-card border-l border-border shrink-0 relative"
+      style={{ width: `${width}px` }}
+    >
+      {/* Drag handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-accent/40 transition-colors z-10 group"
+      >
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 flex h-8 w-3 items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity bg-muted-foreground/20">
+          <GripVertical className="h-3 w-3 text-muted-foreground" />
+        </div>
+      </div>
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h2 className="text-sm font-semibold">行程预览</h2>
         <button
