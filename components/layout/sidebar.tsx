@@ -57,15 +57,20 @@ export function Sidebar() {
 
   async function handleDelete(id: string) {
     if (deletingId === id) {
-      await deleteConversation(id)
-      setDeletingId(null)
-      // Read fresh state from store (not stale closure)
-      const remaining = useConversationStore.getState().conversations
-      if (remaining.length > 0) {
-        router.push(`/chat/${remaining[0].id}`)
-      } else {
-        const newId = await createConversation()
-        router.push(`/chat/${newId}`)
+      try {
+        await deleteConversation(id)
+        setDeletingId(null)
+        // Read fresh state from store (not stale closure)
+        const remaining = useConversationStore.getState().conversations
+        if (remaining.length > 0) {
+          router.push(`/chat/${remaining[0].id}`)
+        } else {
+          const newId = await createConversation()
+          router.push(`/chat/${newId}`)
+        }
+      } catch (error) {
+        console.error('删除对话失败:', error)
+        setDeletingId(null)
       }
     } else {
       setDeletingId(id)

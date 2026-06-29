@@ -61,14 +61,15 @@ export function parseItinerary(markdown: string): DayPlan[] | null {
   for (const line of lines) {
     if (!line) continue
 
-    // 匹配天数标题：支持更多格式
+    // 匹配天数标题：支持多种格式
     // ## Day 1 / ## 第1天 / **Day 1** / Day 1: / 第1天：
+    // - **Day 1**： / 1. **Day 1**： / - Day 1： / Day 1 —
     const dayMatch = line.match(
-      /^#{1,3}\s*(?:Day\s*(\d+)|第(\d+)天)|^\*{2}(?:Day\s*(\d+)|第(\d+)天)|^(?:Day\s*(\d+)|第(\d+)天)\s*[:：—-]/i
+      /^#{1,3}\s*(?:Day\s*(\d+)|第(\d+)天)|^\*{2}(?:Day\s*(\d+)|第(\d+)天)|^[-*]\s*\*{2}(?:Day\s*(\d+)|第(\d+)天)\*{2}|^\d+\.\s*\*{2}(?:Day\s*(\d+)|第(\d+)天)\*{2}|^(?:Day\s*(\d+)|第(\d+)天)\s*[:：—-]/i
     )
     if (dayMatch) {
-      const dayNum = parseInt(dayMatch[1] ?? dayMatch[2] ?? dayMatch[3] ?? dayMatch[4] ?? dayMatch[5] ?? dayMatch[6], 10)
-      currentDay = { day: dayNum, title: line.replace(/^#{1,3}\s*/, '').replace(/^\*{2}|\*{2}$/g, ''), timeSlots: [] }
+      const dayNum = parseInt(dayMatch[1] ?? dayMatch[2] ?? dayMatch[3] ?? dayMatch[4] ?? dayMatch[5] ?? dayMatch[6] ?? dayMatch[7] ?? dayMatch[8] ?? dayMatch[9] ?? dayMatch[10], 10)
+      currentDay = { day: dayNum, title: line.replace(/^#{1,3}\s*/, '').replace(/^[-*\d.]\s*/, '').replace(/\*{2}/g, ''), timeSlots: [] }
       days.push(currentDay)
       currentTimeSlot = null
       continue

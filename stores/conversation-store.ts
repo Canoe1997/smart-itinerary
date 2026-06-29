@@ -67,7 +67,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   },
 
   deleteConversation: async (id: string) => {
-    await fetch(`/api/conversations/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/conversations/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      throw new Error(`删除失败: ${res.status}`)
+    }
     const { conversations, currentId } = get()
     const updated = conversations.filter((c) => c.id !== id)
     const nextCurrentId = currentId === id
