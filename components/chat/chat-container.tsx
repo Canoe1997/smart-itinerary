@@ -110,7 +110,37 @@ export function ChatContainer({ conversationId }: ChatContainerProps) {
 
       while (true) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          // 刷新 TextDecoder 中可能残留的多字节字符
+          buffer += decoder.decode()
+          // 流结束时处理 buffer 中残留的内容（最后的文本块可能没有 \n\n 后缀）
+          if (buffer.trim()) {
+            const remainingLines = buffer.split('\n')
+            for (const line of remainingLines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const parsed = JSON.parse(line.slice(6))
+                  if (parsed.type === 'sources') {
+                    sourcesData = parsed.sources
+                  }
+                } catch {
+                  // skip malformed JSON
+                }
+              } else if (line.trim()) {
+                assistantContent += line
+              }
+            }
+          }
+          // 将残留内容更新到 liveMessages
+          setLiveMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: assistantContent, toolCalls: [...toolCalls] }
+                : m,
+            ),
+          )
+          break
+        }
 
         buffer += decoder.decode(value, { stream: true })
 
